@@ -10,7 +10,6 @@ export const WalletConnect = ({ notify }:
 
     const { setToken, fetchUserProfile, user } = useStore();
 
-    console.log("WalletConnect user:", user);
 
     const { data: agwClient } = useAbstractClient();
     const [signature, setSignature] = useState<string | null>(null);
