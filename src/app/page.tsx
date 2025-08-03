@@ -120,12 +120,6 @@ const BettingTable = ({ onBet, bets, isBettingPhase }: { onBet: (type: BetType, 
 
 const Notification = ({ message, onClear }: { message: string, onClear: () => void }) => {
   if (!message) return null;
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClear();
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [message, onClear]);
 
   return (
     <div className="fixed top-5 right-5 bg-black/80 backdrop-blur-sm text-white p-4 rounded-lg shadow-lg z-50 flex items-center gap-4 animate-fade-in-down">
