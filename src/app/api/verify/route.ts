@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
- 
+
         const isValid = await publicClient.verifyMessage({
             address: address,
             message: SIGNED_MESSAGE,
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         if (!isValid) {
             return NextResponse.json(
                 { error: 'Invalid signature. Please try again.' },
-                { status: 401 } 
+                { status: 401 }
             );
         }
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
         }
 
-        const backendResponse = await fetch(`${backendApiUrl}/auth/register`, {
+        const backendResponse = await fetch(`${backendApiUrl}/auth/verify`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
         const registrationData = await backendResponse.json();
 
-        // 5. Return a success response to the frontend
+
         return NextResponse.json(
             { success: true, message: 'User registered successfully!', data: registrationData },
             { status: 200 }
