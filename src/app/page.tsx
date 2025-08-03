@@ -7,6 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { Dices, CircleDollarSign, RotateCcw, X } from 'lucide-react';
 // import { Wheel } from 'react-custom-roulette';
 import dynamic from 'next/dynamic';
+import {WalletConnect} from './walletConnect';
 
 const Wheel = dynamic(() => import('react-custom-roulette').then(mod => mod.Wheel), {
   ssr: false,
@@ -332,12 +333,18 @@ export default function RouletteGamePage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={clearBets} disabled={spinning || totalBet === 0} className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors">
+            <button onClick={clearBets} disabled={spinning || totalBet === 0} className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors text-lg shadow-lg shadow-gray-600/30">
               <RotateCcw size={20} /> Clear
             </button>
             <button onClick={handleSpin} disabled={spinning || totalBet === 0} className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors text-lg shadow-lg shadow-green-600/30">
               <Dices size={24} /> SPIN
             </button>
+            <WalletConnect 
+            
+            notify={(message, type) => {
+              setNotification(message);}
+            }
+            />
           </div>
         </div>
       </div>
