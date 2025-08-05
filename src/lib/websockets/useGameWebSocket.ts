@@ -41,6 +41,9 @@ export const useGameWebSocket = (userId: number | null): UseGameSocketReturn => 
         switch (message.type) {
             case 'game_state':
                 setGameState(message.payload);
+                if (message.payload.phase === 'BETTING' && lastWinnings !== null) {
+                    setLastWinnings(null);
+                }
                 break;
 
             case 'spin_start':

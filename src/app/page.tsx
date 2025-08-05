@@ -449,7 +449,11 @@ export default function RouletteGamePage() {
       setNotification('Bets cleared.');
       await fetchUserProfile();
     } catch (error: any) {
-      setNotification("Failed to clear bets. Please try again.");
+      if (isBettingPhase) {
+        setBets({});
+      } else {
+        setNotification("Bets can only be cleared during the betting phase.");
+      }
     }
   };
 
@@ -493,9 +497,25 @@ export default function RouletteGamePage() {
               {gameState?.phase === 'SPINNING' && <p className="text-xl text-blue-400 animate-pulse">Spinning...</p>}
               {gameState?.phase === 'RESULTS' && (
                 mustSpin ? <p className="text-xl text-green-400 animate-pulse">Results are in! Winning number is spinning...</p> :
-                  <p className="text-2xl font-bold animate-fade-in">
-                    Winning Number: <span className={getNumberInfo(gameState.winning_number ?? 0).color === 'red' ? 'text-red-500' : getNumberInfo(gameState.winning_number ?? 0).color === 'black' ? 'text-gray-300' : 'text-green-500'}>{gameState.winning_number}</span>
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold animate-fade-in">
+                      Winning Number:{" "}
+                      <span
+                        className={
+                          getNumberInfo(gameState.winning_number ?? 0).color === "red"
+                            ? "text-red-500"
+                            : getNumberInfo(gameState.winning_number ?? 0).color === "black"
+                              ? "text-gray-300"
+                              : "text-green-500"
+                        }
+                      >
+                        {gameState.winning_number}
+                      </span>
+                    </p>
+                    <p className="text-sm text-gray-300 animate-fade-in delay-500">
+                      Betting for next spin starting soon...
+                    </p>
+                  </div>
               )}
             </div>
           </div>
