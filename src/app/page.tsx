@@ -8,7 +8,24 @@ import dynamic from 'next/dynamic';
 import { useStore } from '@/lib/redux/hooks';
 import { useGameWebSocket } from '@/lib/websockets/useGameWebSocket';
 import { WalletConnect } from './walletConnect';
-import { cancelBet, placeBet } from '@/services/api';
+import { cancelBet, checkTokenAllowance, claimTokens, placeBet } from '@/services/api';
+import { BalanceModal } from './BalanceModel';
+import { MANAGER_ABI, MANAGER_CONTRACT_ADDRESS } from "@/lib/contract_data/manager";
+import { TOKEN_ABI, TOKEN_CONTRACT_ADDRESS } from "@/lib/contract_data/token";
+
+import {
+  useAccount,
+  useSwitchChain,
+  useWriteContract,
+  useReadContract,
+  useBalance,
+} from "wagmi";
+
+import { ethers, Networkish } from "ethers";
+import { abstractTestnet } from 'viem/chains';
+
+
+
 
 const Wheel = dynamic(() => import('react-custom-roulette').then(mod => mod.Wheel), {
   ssr: false,
@@ -152,7 +169,7 @@ export default function RouletteGamePage() {
   const [notification, setNotification] = useState('');
 
   // Redux store integration
-  const { user, setToken, fetchUserProfile } = useStore();
+  const { user, setToken, fetchUserProfile, logout } = useStore();
   const balance = user.profile?.balance ?? 0;
 
   // WebSocket integration
@@ -161,7 +178,174 @@ export default function RouletteGamePage() {
   const isBettingPhase = gameState?.phase === 'BETTING';
   const mustSpin = gameState?.phase === 'SPINNING';
   const prizeNumber = WHEEL_NUMBERS.indexOf(gameState?.winning_number ?? -1);
+  const [isBalanceModalOpen, setIsBalanceModalOpen] = useState(false);
 
+  // const { address, chainId } = useAccount();
+  const { isConnected: isWalletConnected, address, chainId, } = useAccount();
+
+  const { data: hash, writeContract, error } = useWriteContract()
+  const { switchChain } = useSwitchChain();
+
+  // console.log("error", error);
+
+  useEffect(() => {
+    if (!isWalletConnected && user?.profile) {
+      setNotification("Please connect your wallet to play.");
+      logout()
+    }
+  }, [isWalletConnected, user?.profile, logout]);
+
+
+
+  const abstractTestnetNetwork: Networkish = {
+    chainId: abstractTestnet.id,
+    name: abstractTestnet.name,
+    ensAddress: address
+  }
+  // const provider = new ethers.providers.JsonRpcProvider(providerUrl);
+  const provider = new ethers.AbstractProvider(abstractTestnetNetwork)
+  const token_contract = new ethers.Contract(
+    TOKEN_CONTRACT_ADDRESS,
+    TOKEN_ABI,
+    provider
+  );
+
+  const manager_contract = new ethers.Contract(
+    MANAGER_CONTRACT_ADDRESS,
+    MANAGER_ABI,
+    provider
+  );
+
+
+
+
+  const { data: tokenBalanceData } = useBalance({
+    address: address,
+    token: TOKEN_CONTRACT_ADDRESS,
+    chainId: abstractTestnet.id,
+  });
+
+
+
+  async function handleDeposit(amount: number) {
+    if (!address) {
+      setNotification("Please connect your wallet first.");
+      return;
+    }
+    if (amount <= 0) {
+      setNotification("Amount must be greater than 0.");
+      return;
+    }
+
+    // match with tokenBalanceData if amount is greater than token balance (amount provided in number(ether) and you may get token balance in number(wei) bigInt so make sure to convert it and then match)
+    if (tokenBalanceData && amount > Number(tokenBalanceData.value) / 1e18) {
+      setNotification("Insufficient token balance for this deposit.");
+      return;
+    }
+
+    console.log('balance', tokenBalanceData ? Number(tokenBalanceData.value) / 1e18 : tokenBalanceData, 'amount', amount);
+
+
+    // await token_contract.allowance(address, MANAGER_CONTRACT_ADDRESS).then(async (allowance: any) => {
+    //   if (allowance < ethers.parseEther(amount.toString())) {
+    //     await token_contract.approve(MANAGER_CONTRACT_ADDRESS, ethers.parseEther(amount.toString())).then(async () => {
+    //       await manager_contract.deposit(ethers.parseEther(amount.toString())).then(() => {
+    //         setNotification(`Deposited ${amount} $tGUGO successfully, will be reflected in your balance soon.`);
+    //         // fetchUserProfile();
+    //       }).catch((error: any) => {
+    //         console.error("Deposit failed:", error);
+    //         setNotification("Deposit failed. Please try again.");
+    //       });
+    //     }).catch((error: any) => {
+    //       console.error("Approval failed:", error);
+    //       setNotification("Approval failed. Please try again.");
+    //     });
+    //   } else {
+    //     await manager_contract.deposit(ethers.parseEther(amount.toString())).then(() => {
+    //       setNotification(`Deposited ${amount} $tGUGO successfully, will be reflected in your balance soon.`);
+    //       // fetchUserProfile();
+    //     }).catch((error: any) => {
+    //       console.error("Deposit failed:", error);
+    //       setNotification("Deposit failed. Please try again.");
+    //     });
+    //   }
+    // })
+
+    try {
+      const res = await checkTokenAllowance(
+        {
+          spender_address: MANAGER_CONTRACT_ADDRESS,
+          user_address: address
+        }
+      )
+      const userAllowance = res?.allowance ? res?.allowance / 1e18 : 0;
+      console.log("User allowance:", userAllowance, "Amount to deposit:", amount);
+      if (userAllowance < amount) {
+        await writeContract(
+          {
+            abi: TOKEN_ABI,
+            address: TOKEN_CONTRACT_ADDRESS,
+            functionName: 'approve',
+            args: [MANAGER_CONTRACT_ADDRESS, ethers.parseEther(amount.toString())],
+          }
+        )
+        setNotification(`Approve token and then try to deposit $tGUGO again.`);
+      }
+      else {
+        await writeContract(
+          {
+            abi: MANAGER_ABI,
+            address: MANAGER_CONTRACT_ADDRESS,
+            functionName: 'deposit',
+            args: [ethers.parseEther(amount.toString())],
+          }
+        )
+        // setNotification(`Deposited ${amount} $tGUGO successfully, will be reflected in your balance soon.`);
+      }
+    } catch (error) {
+      console.error("Deposit failed:", error);
+      setNotification("Deposit failed. Please try again.");
+    }
+    setIsBalanceModalOpen(false);
+  }
+
+
+  async function handleClaim(amount: number) {
+    if (!address) {
+      setNotification("Please connect your wallet first.");
+      return;
+    }
+    if (amount <= 0) {
+      setNotification("Amount must be greater than 0.");
+      return;
+    }
+    if (amount > balance) {
+      setNotification("Insufficient balance for this claim.");
+      return;
+    }
+    const res = await claimTokens(amount);
+    setIsBalanceModalOpen(false);
+    // console.log("Claim response:", res);
+    setNotification('Claim request received. You will receive your tokens within 24 hours.');
+    // if (res.signature) {
+    //   console.log("Claim response:", res);
+    //   await writeContract(
+    //     {
+    //       abi: MANAGER_ABI,
+    //       address: MANAGER_CONTRACT_ADDRESS,
+    //       functionName: 'claim',
+    //       args: [ethers.parseEther(amount.toString()), `${res.nonce}` || "0", res.signature]
+    //     }
+    //   )
+    //   // setNotification(`Claimed ${amount} $tGUGO successfully, will be reflected in your balance soon.`);
+    //   setNotification('Confirm the transaction in your wallet to claim tokens.');
+    // }
+  }
+
+
+  function OnCloseBalanceModal() {
+    setIsBalanceModalOpen(false);
+  }
 
   useEffect(() => {
     if (isBettingPhase) {
@@ -186,7 +370,7 @@ export default function RouletteGamePage() {
     if (gameState?.phase !== 'RESULTS' || mustSpin) return;
     if (lastWinnings !== null) {
       if (lastWinnings > 0) {
-        setNotification(`You won $${lastWinnings.toLocaleString()}!`);
+        setNotification(`You won ${lastWinnings.toLocaleString()} $tGUGO!`);
       } else {
         setNotification(`No win this round. Better luck next time!`);
       }
@@ -229,7 +413,7 @@ export default function RouletteGamePage() {
         return;
       }
       setNotification('Bets placed!');
-      await fetchUserProfile(); 
+      await fetchUserProfile();
     } catch (error: any) {
       setNotification("Failed to place bets. Please try again.");
     }
@@ -254,99 +438,100 @@ export default function RouletteGamePage() {
       }
       setBets({});
       setNotification('Bets cleared.');
-      await fetchUserProfile(); 
+      await fetchUserProfile();
     } catch (error: any) {
       setNotification("Failed to clear bets. Please try again.");
     }
   };
 
   return (
-    <div className="min-h-screen bg-green-800 text-white flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
-      <div className="absolute inset-0 bg-green-900/50 bg-[radial-gradient(#ffffff22_1px,transparent_1px)] [background-size:16px_16px]"></div>
-      <Notification message={notification} onClear={() => setNotification('')} />
-      <LastNumbers numbers={gameState?.last_numbers ?? []} />
+    <>
+      <div className="min-h-screen bg-green-800 text-white flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
+        <div className="absolute inset-0 bg-green-900/50 bg-[radial-gradient(#ffffff22_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        <Notification message={notification} onClear={() => setNotification('')} />
+        <LastNumbers numbers={gameState?.last_numbers ?? []} />
 
-      <div className="w-full flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4 z-10">
-        <div className="flex-shrink-0 flex flex-col items-center gap-6 pt-8">
-          <Wheel
-            mustStartSpinning={mustSpin}
-            prizeNumber={prizeNumber === -1 ? 0 : prizeNumber}
-            innerRadius={5}
-            innerBorderColor='#ffffff'
-            disableInitialAnimation={true}
-            innerBorderWidth={2}
-            outerBorderColor='#ffffff'
-            outerBorderWidth={4}
-            data={
-              WHEEL_NUMBERS.map(num => {
-                const { color } = getNumberInfo(num);
-                return {
-                  option: `${num}`,
-                  style: {
-                    backgroundColor: color === 'red' ? '#df3423' : color === 'black' ? '#3e3e3e' : '#00a000',
-                    textColor: '#ffffff',
-                  }
-                };
-              })
-            }
-            onStopSpinning={() => {
-              // The backend now controls the game flow, so this callback is less critical
-              // for game logic, but can be used for UI effects.
-              console.log("Wheel stopped spinning.");
-            }}
-          />
-          <div className="bg-black/50 p-4 rounded-lg text-center shadow-lg min-h-[60px] w-full max-w-sm">
-            {gameState?.phase === 'BETTING' && <p className="text-xl text-yellow-400">Place your bets! Timer: {gameState.timer}</p>}
-            {gameState?.phase === 'LOCKED' && <p className="text-xl text-red-500 animate-pulse">Bets Locked! Timer: {gameState.timer}</p>}
-            {gameState?.phase === 'SPINNING' && <p className="text-xl text-blue-400 animate-pulse">Spinning...</p>}
-            {gameState?.phase === 'RESULTS' && (
-              mustSpin ? <p className="text-xl text-green-400 animate-pulse">Results are in! Winning number is spinning...</p> :
-                <p className="text-2xl font-bold animate-fade-in">
-                  Winning Number: <span className={getNumberInfo(gameState.winning_number ?? 0).color === 'red' ? 'text-red-500' : getNumberInfo(gameState.winning_number ?? 0).color === 'black' ? 'text-gray-300' : 'text-green-500'}>{gameState.winning_number}</span>
-                </p>
-            )}
-          </div>
-        </div>
-        <div className="flex-grow flex items-start justify-center gap-4">
-          <BettingTable onBet={handleBet} bets={bets} isBettingPhase={isBettingPhase} />
-          <div className="flex flex-col items-center gap-3 bg-black/30 p-3 rounded-lg sticky top-4">
-            <span className="text-gray-300 font-bold text-sm">CHIP</span>
-            {CHIP_VALUES.map(value => (
-              <button key={value} onClick={() => setSelectedChip(value)} className={`w-12 h-12 rounded-full font-bold text-white text-sm border-4 transition-all duration-200 ${CHIP_COLORS[value]} ${selectedChip === value ? 'border-yellow-400 scale-110' : 'border-transparent hover:border-white/50'}`}>
-                {value}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md p-4 z-30">
-        <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-6 text-lg">
-            <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg">
-              <span className="text-gray-400">Bet:</span>
-              <span className="font-bold text-yellow-400">${totalBet.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg">
-              <CircleDollarSign className="text-green-400" size={24} />
-              <span className="font-bold text-green-400">${balance.toLocaleString()}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <button onClick={clearBets} disabled={!isBettingPhase || totalBet === 0} className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors text-lg shadow-lg shadow-gray-600/30">
-              <RotateCcw size={20} /> Clear
-            </button>
-            <button onClick={handlePlaceBets} disabled={!isBettingPhase || totalBet === 0} className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors text-lg shadow-lg shadow-green-600/30">
-              <Dices size={24} /> PLACE BET
-            </button>
-            <WalletConnect
-              notify={(message, type) => {
-                setNotification(message);
+        <div className="w-full flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4 z-10">
+          <div className="flex-shrink-0 flex flex-col items-center gap-6 pt-8">
+            <Wheel
+              mustStartSpinning={mustSpin}
+              prizeNumber={prizeNumber === -1 ? 0 : prizeNumber}
+              innerRadius={5}
+              innerBorderColor='#ffffff'
+              disableInitialAnimation={true}
+              innerBorderWidth={2}
+              outerBorderColor='#ffffff'
+              outerBorderWidth={4}
+              data={
+                WHEEL_NUMBERS.map(num => {
+                  const { color } = getNumberInfo(num);
+                  return {
+                    option: `${num}`,
+                    style: {
+                      backgroundColor: color === 'red' ? '#df3423' : color === 'black' ? '#3e3e3e' : '#00a000',
+                      textColor: '#ffffff',
+                    }
+                  };
+                })
+              }
+              onStopSpinning={() => {
+                console.log("Wheel stopped spinning.");
               }}
             />
+            <div className="bg-black/50 p-4 rounded-lg text-center shadow-lg min-h-[60px] w-full max-w-sm">
+              {gameState?.phase === 'BETTING' && <p className="text-xl text-yellow-400">Place your bets! Timer: {gameState.timer}</p>}
+              {gameState?.phase === 'LOCKED' && <p className="text-xl text-red-500 animate-pulse">Bets Locked! Timer: {gameState.timer}</p>}
+              {gameState?.phase === 'SPINNING' && <p className="text-xl text-blue-400 animate-pulse">Spinning...</p>}
+              {gameState?.phase === 'RESULTS' && (
+                mustSpin ? <p className="text-xl text-green-400 animate-pulse">Results are in! Winning number is spinning...</p> :
+                  <p className="text-2xl font-bold animate-fade-in">
+                    Winning Number: <span className={getNumberInfo(gameState.winning_number ?? 0).color === 'red' ? 'text-red-500' : getNumberInfo(gameState.winning_number ?? 0).color === 'black' ? 'text-gray-300' : 'text-green-500'}>{gameState.winning_number}</span>
+                  </p>
+              )}
+            </div>
+          </div>
+          <div className="flex-grow flex items-start justify-center gap-4">
+            <BettingTable onBet={handleBet} bets={bets} isBettingPhase={isBettingPhase} />
+            <div className="flex flex-col items-center gap-3 bg-black/30 p-3 rounded-lg sticky top-4">
+              <span className="text-gray-300 font-bold text-sm">CHIP</span>
+              {CHIP_VALUES.map(value => (
+                <button key={value} onClick={() => setSelectedChip(value)} className={`w-12 h-12 rounded-full font-bold text-white text-sm border-4 transition-all duration-200 ${CHIP_COLORS[value]} ${selectedChip === value ? 'border-yellow-400 scale-110' : 'border-transparent hover:border-white/50'}`}>
+                  {value}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md p-4 z-30">
+          <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-6 text-lg">
+              <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg">
+                <span className="text-gray-400">Bet:</span>
+                <span className="font-bold text-yellow-400">{totalBet.toLocaleString()} $tGUGO</span>
+              </div>
+              <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg cursor-pointer" onClick={() => setIsBalanceModalOpen(true)}>
+                <CircleDollarSign className="text-green-400" size={24} />
+                <span className="font-bold text-green-400">{balance.toLocaleString()} $tGUGO</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <button onClick={clearBets} disabled={!isBettingPhase || totalBet === 0} className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors text-lg shadow-lg shadow-gray-600/30">
+                <RotateCcw size={20} /> Clear
+              </button>
+              <button onClick={handlePlaceBets} disabled={!isBettingPhase || totalBet === 0} className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors text-lg shadow-lg shadow-green-600/30">
+                <Dices size={24} /> PLACE BET
+              </button>
+              <WalletConnect
+                notify={(message, type) => {
+                  setNotification(message);
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      <BalanceModal open={isBalanceModalOpen} onClose={OnCloseBalanceModal} onDeposit={handleDeposit} onClaim={handleClaim} />
+    </>
   );
 }

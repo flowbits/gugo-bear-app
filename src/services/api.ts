@@ -17,6 +17,23 @@ interface PlaceBetPayload {
 interface CancelBetPayload {
     spin_id: string;
 }
+interface SignatureResponse {
+    signature: string;
+    nonce: number | null;
+}
+
+interface AllowanceResponse {
+    allowance: number;
+}
+
+interface SignatureRequest {
+    amount: number;
+}
+
+interface AllowanceRequest {
+    spender_address: string;
+    user_address?: string; 
+}
 
 // --- Helper Function to Get Auth Headers ---
 
@@ -105,6 +122,49 @@ export const cancelBet = async (payload: CancelBetPayload): Promise<any> => {
     if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to cancel bet.');
+    }
+
+    return response.json();
+};
+
+
+/**
+ * Claims a specific amount of tokens for the current user.
+ * @param {number} amount - The amount of tokens to claim.
+ * @returns {Promise<SignatureResponse>} The signature response from the server.
+ */
+export const claimTokens = async (amount: number): Promise<SignatureResponse> => {
+    console.log("Requesting claim for amount:", amount);
+    const response = await fetch(`${API_BASE_URL}/users/claim_request`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ amount }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to claim tokens.');
+    }
+
+    return response.json();
+}
+
+
+/** * Checks the ERC20 token allowance for the current user.
+ * @param {AllowanceRequest} request - The request containing spender address and optional user address.
+ * @returns {Promise<AllowanceResponse>} The allowance response from the server.
+ */
+export const checkTokenAllowance = async (request: AllowanceRequest): Promise<AllowanceResponse> => {
+    console.log("Checking token allowance for spender:", request.spender_address);
+    const response = await fetch(`${API_BASE_URL}/users/check-allowance`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to check token allowance.');
     }
 
     return response.json();

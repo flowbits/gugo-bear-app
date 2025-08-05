@@ -1,7 +1,8 @@
-import { ConnectKitButton } from "connectkit";
+import { ConnectKitButton, } from "connectkit";
 import { useAbstractClient } from "@abstract-foundation/agw-react";
 import { useEffect, useState } from "react";
 import { useStore } from "@/lib/redux/hooks";
+import { useSignMessage, useAccount } from "wagmi";
 
 
 export const WalletConnect = ({ notify }:
@@ -9,10 +10,12 @@ export const WalletConnect = ({ notify }:
 ) => {
 
     const { setToken, fetchUserProfile, user } = useStore();
+    const { data: signMessageData, error, signMessage: signWithWagmi, variables } = useSignMessage()
+    const { address } = useAccount();
 
-
+    // Using the Abstract client to sign messages
     const { data: agwClient } = useAbstractClient();
-    const [signature, setSignature] = useState<string | null>(null);
+    // const [signature, setSignature] = useState<string | null>(null);
 
     async function signMessage() {
         try {
@@ -44,7 +47,7 @@ export const WalletConnect = ({ notify }:
                 return;
             }
 
-            setSignature(signature);
+            // setSignature(signature);
 
             const data = await res.json();
             if (data?.success && data?.data?.access_token) {
@@ -56,13 +59,63 @@ export const WalletConnect = ({ notify }:
             }
 
         } catch (error) {
-            if (error instanceof Error) {
-                const err_msg = error.message || "Unknown error signing message";
-                if (notify) notify(`Error: ${err_msg.slice(0, 50)}`, 'error');
+            // if (error instanceof Error) {
+            //     const err_msg = error.message || "Unknown error signing message";
+            //     if (notify) notify(`Error: ${err_msg.slice(0, 50)}`, 'error');
 
-            }
+            // }
+            // try signing with wagmi
+            // if (error instanceof Error) {
+            //     const err_msg = error.message || "Unknown error signing message";
+            //     if (notify) notify(`Error: ${err_msg.slice(0, 50)}`, 'error');
+            // }
+            await signWithWagmi({
+                message: "Welcome! Please sign this message to verify your wallet address and register on our platform.",
+            });
+
         }
     }
+
+    useEffect(() => {
+        if (user?.profile) return;
+        if (signMessageData) {
+            const res = fetch('/api/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    address: address,
+                    signature: signMessageData,
+                }),
+            });
+
+            res.then(async (response) => {
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (notify) notify(`Error: ${errorData.error || 'Failed to verify signature.'}`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                if (data?.success && data?.data?.access_token) {
+                    setToken(data.data.access_token);
+                    await fetchUserProfile();
+
+                    if (notify) notify("Wallet connected and verified successfully!", 'success');
+                }
+            });
+        }
+        return () => {
+        };
+    }, [signMessageData, error, variables, notify, setToken, fetchUserProfile, address, user?.profile]);
+
+    useEffect(() => {
+        if (error) {
+            const err_msg = error.message || "Unknown error signing message";
+            if (notify) notify(`Error: ${err_msg.slice(0, 50)}`, 'error');
+        }
+    }, [error, notify]);
 
     useEffect(() => {
         if (user?.profile) return;
