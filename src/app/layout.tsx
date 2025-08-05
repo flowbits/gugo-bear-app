@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Roulette Spin - $tGUGO",
-  description: "Spin the wheel and win $tGUGO tokens! Join the roulette game and test your luck.",
+  title: "The Gugo Gambit ($GUGO)",
+  description: "Spin the wheel and win $tGUGO tokens! Join The Gugo Gambit game and test your luck.",
 };
 
 export default function RootLayout({
@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" >
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
