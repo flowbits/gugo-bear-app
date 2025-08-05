@@ -8,6 +8,7 @@ interface UserProfile {
     wallet_address: string;
     balance: number;
     created_at: string;
+    nonce?: number | null; // Optional field for nonce
 }
 
 // Define the state for this slice

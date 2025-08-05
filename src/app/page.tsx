@@ -183,17 +183,24 @@ export default function RouletteGamePage() {
   // const { address, chainId } = useAccount();
   const { isConnected: isWalletConnected, address, chainId, } = useAccount();
 
-  const { data: hash, writeContract, error } = useWriteContract()
+  const { data: hash, writeContract, isError, isSuccess, status } = useWriteContract()
   const { switchChain } = useSwitchChain();
 
-  // console.log("error", error);
+  useEffect(() => {
+    if (!isWalletConnected) {
+      setNotification("Connect your wallet to play.");
+    } else if (isWalletConnected && notification === "Connect your wallet to play.") {
+      setNotification("");
+    }
+  }, [isWalletConnected, user?.profile, notification]);
+
 
   useEffect(() => {
-    if (!isWalletConnected && user?.profile) {
-      setNotification("Please connect your wallet to play.");
-      logout()
+    if (status == "success") {
+      setNotification("Transaction successful! Check your wallet for details.");
+      fetchUserProfile();
     }
-  }, [isWalletConnected, user?.profile, logout]);
+  }, [status, fetchUserProfile]);
 
 
 
@@ -306,7 +313,7 @@ export default function RouletteGamePage() {
       console.error("Deposit failed:", error);
       setNotification("Deposit failed. Please try again.");
     }
-    setIsBalanceModalOpen(false);
+    // setIsBalanceModalOpen(false);
   }
 
 
@@ -324,22 +331,24 @@ export default function RouletteGamePage() {
       return;
     }
     const res = await claimTokens(amount);
-    setIsBalanceModalOpen(false);
-    // console.log("Claim response:", res);
-    setNotification('Claim request received. You will receive your tokens within 24 hours.');
-    // if (res.signature) {
-    //   console.log("Claim response:", res);
-    //   await writeContract(
-    //     {
-    //       abi: MANAGER_ABI,
-    //       address: MANAGER_CONTRACT_ADDRESS,
-    //       functionName: 'claim',
-    //       args: [ethers.parseEther(amount.toString()), `${res.nonce}` || "0", res.signature]
-    //     }
-    //   )
-    //   // setNotification(`Claimed ${amount} $tGUGO successfully, will be reflected in your balance soon.`);
-    //   setNotification('Confirm the transaction in your wallet to claim tokens.');
-    // }
+    // setIsBalanceModalOpen(false);
+    console.log("Claim response:", res);
+    // setNotification('Claim request received. You will receive your tokens within 24 hours.');
+    if (res.signature) {
+      console.log("Claim response:", res);
+      // amount in wei convert
+      const amountInWei = ethers.parseEther(res.amount.toString());
+      await writeContract(
+        {
+          abi: MANAGER_ABI,
+          address: MANAGER_CONTRACT_ADDRESS,
+          functionName: 'claim',
+          args: [amountInWei, res.nonce, `0x${res.signature}`]
+        }
+      )
+      // setNotification(`Claimed ${amount} $tGUGO successfully, will be reflected in your balance soon.`);
+      setNotification('Confirm the transaction in your wallet to claim tokens.');
+    }
   }
 
 
@@ -490,12 +499,12 @@ export default function RouletteGamePage() {
               )}
             </div>
           </div>
-          <div className="flex-grow flex items-start justify-center gap-4">
+          <div className="flex-grow flex-col min-[768px]:flex-row flex items-start justify-center gap-4 pb-[150px] min-[768px]:pb-[80px] lg:pb-0">
             <BettingTable onBet={handleBet} bets={bets} isBettingPhase={isBettingPhase} />
-            <div className="flex flex-col items-center gap-3 bg-black/30 p-3 rounded-lg sticky top-4">
+            <div className="flex flex-row min-[768px]:flex-col items-center gap-3 bg-black/30 p-3 rounded-lg sticky top-4 max-[768px]:w-full max-[768px]:justify-center">
               <span className="text-gray-300 font-bold text-sm">CHIP</span>
               {CHIP_VALUES.map(value => (
-                <button key={value} onClick={() => setSelectedChip(value)} className={`w-12 h-12 rounded-full font-bold text-white text-sm border-4 transition-all duration-200 ${CHIP_COLORS[value]} ${selectedChip === value ? 'border-yellow-400 scale-110' : 'border-transparent hover:border-white/50'}`}>
+                <button key={value} onClick={() => setSelectedChip(value)} className={`w-8 h-8 lg:w-12 lg:h-12 rounded-full font-bold text-white text-sm border-4 transition-all duration-200 ${CHIP_COLORS[value]} ${selectedChip === value ? 'border-yellow-400 scale-110' : 'border-transparent hover:border-white/50'}`}>
                   {value}
                 </button>
               ))}
@@ -503,24 +512,37 @@ export default function RouletteGamePage() {
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md p-4 z-30">
-          <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-6 text-lg">
-              <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg">
+        <div className="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md p-4 z-30 ">
+          <div className="w-full max-w-7xl mx-auto flex flex-col min-[768px]:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-6 text-xs lg:text-lg">
+              <div className="flex flex-row items-center gap-2 bg-black/30 p-2 rounded-lg ">
                 <span className="text-gray-400">Bet:</span>
-                <span className="font-bold text-yellow-400">{totalBet.toLocaleString()} $tGUGO</span>
+                <span className="font-bold text-yellow-400 w-full flex flex-row gap-1">
+                  <p>{totalBet.toLocaleString()}</p>
+                  <p>$tGUGO</p>
+                </span>
               </div>
-              <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg cursor-pointer" onClick={() => setIsBalanceModalOpen(true)}>
-                <CircleDollarSign className="text-green-400" size={24} />
-                <span className="font-bold text-green-400">{balance.toLocaleString()} $tGUGO</span>
+              <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg cursor-pointer " onClick={() => setIsBalanceModalOpen(true)}>
+                <CircleDollarSign className="text-green-400" size={20} />
+                <span className="font-bold text-green-400 flex flex-row gap-1">
+                  <p>{balance.toLocaleString()} </p>
+                  <p>$tGUGO</p>
+                </span>
               </div>
+              {
+                user?.profile?.nonce == null || user?.profile?.nonce === 0 ? (
+                  <button onClick={() => handleClaim(1)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-xs lg:text-lg shadow-lg shadow-blue-600/30">
+                    Claim Bonus
+                  </button>
+                ) : null
+              }
             </div>
             <div className="flex items-center gap-4">
-              <button onClick={clearBets} disabled={!isBettingPhase || totalBet === 0} className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors text-lg shadow-lg shadow-gray-600/30">
+              <button onClick={clearBets} disabled={!isBettingPhase || totalBet === 0} className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-bold py-3 px-3 lg:px-6 rounded-lg flex items-center gap-2 transition-colors text-xs lg:text-lg shadow-lg shadow-gray-600/30">
                 <RotateCcw size={20} /> Clear
               </button>
-              <button onClick={handlePlaceBets} disabled={!isBettingPhase || totalBet === 0} className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors text-lg shadow-lg shadow-green-600/30">
-                <Dices size={24} /> PLACE BET
+              <button onClick={handlePlaceBets} disabled={!isBettingPhase || totalBet === 0} className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed text-white font-bold lg:py-3 p-2 lg:px-6 rounded-lg flex items-center gap-2 transition-colors text-xs lg:text-lg shadow-lg shadow-green-600/30">
+                <Dices size={20} /> PLACE BET
               </button>
               <WalletConnect
                 notify={(message, type) => {
@@ -531,7 +553,7 @@ export default function RouletteGamePage() {
           </div>
         </div>
       </div>
-      <BalanceModal open={isBalanceModalOpen} onClose={OnCloseBalanceModal} onDeposit={handleDeposit} onClaim={handleClaim} />
+      <BalanceModal open={isBalanceModalOpen} onClose={OnCloseBalanceModal} onDeposit={handleDeposit} onClaim={handleClaim} status={status} txHash={hash} />
     </>
   );
 }

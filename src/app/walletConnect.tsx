@@ -134,7 +134,7 @@ export const WalletConnect = ({ notify }:
                             }
                             if (show) show();
                         }}
-                        className="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors text-lg shadow-lg shadow-green-600/30"
+                        className="bg-green-600 hover:bg-green-500 text-white font-bold lg:py-3 p-2 lg:px-6 rounded-lg flex items-center gap-2 transition-colors text-xs lg:text-lg shadow-lg shadow-green-600/30"
                     >
                         {isConnecting && !isConnected && "Connecting..."}
                         {isConnected && !user?.profile ? "Sign Message" : isConnected && (ensName ?? truncatedAddress)}

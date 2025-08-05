@@ -4,6 +4,7 @@ interface UserProfile {
     wallet_address: string;
     balance: number;
     created_at: string; // Dates are typically strings in JSON
+    nonce?: number | null; // Optional field for nonce
 }
 
 interface Bet {
@@ -19,7 +20,9 @@ interface CancelBetPayload {
 }
 interface SignatureResponse {
     signature: string;
+    amount: number;
     nonce: number | null;
+    amount_wei: number | null;
 }
 
 interface AllowanceResponse {
@@ -71,7 +74,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
  * @returns {Promise<UserProfile>} The user's profile data.
  */
 export const getUserProfile = async (): Promise<UserProfile> => {
-    console.log("Fetching user profile...");
     const response = await fetch(`${API_BASE_URL}/users/me`, {
         method: 'GET',
         headers: getAuthHeaders(),

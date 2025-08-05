@@ -106,7 +106,7 @@ export const useGameWebSocket = (userId: number | null): UseGameSocketReturn => 
         };
 
         socket.onerror = (error) => {
-            console.error('WebSocket error:', error);
+            // console.error('WebSocket error:', error);
             setIsConnected(false);
         };
 
