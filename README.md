@@ -1,4 +1,30 @@
+## Welcome to the $GUGO Testnet Experience!
+
+- Get ready for a thrilling, fast-paced roulette game where you can test your luck and strategy on our live testnet. We're inviting you to be among the first to spin the wheel and earn our exclusive testnet token, $tGUGO!
+
+- Your Mission, Should You Choose to Accept It:
+
+- Sign In & Get Funded: We'll instantly credit your new account with 100 $tGUGO so you can jump right into the action.
+
+- Master the Cycle: Our game is fully automated! Keep an eye on the game state as it cycles through timed slots:
+
+- BETTING: The floor is open! Place your bets on the table.
+
+- LOCK: No more bets! The wagers are locked in.
+
+- SPINNING: The wheel is in motion. Good luck!
+
+- WIN: The results are in, and winners are paid out in $tGUGO.
+
+- Place Bet → Wait for Spin → Earn $GUGO: That's all it takes. Join the fun on our testnet and see how high you can build your $tGUGO balance!
+
+
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+
+
 
 ## Getting Started
 
