@@ -95,7 +95,7 @@ const BettingTable = ({ onBet, bets, isBettingPhase }: { onBet: (type: BetType, 
                   const { color } = getNumberInfo(num);
                   return (
                     <div key={num} className="relative">
-                      <button onClick={() => handleBet('straight', num)} disabled={isDisabled} className="w-full h-14 text-white font-bold text-sm transition-colors flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50 hover:bg-white/10">
+                      <button onClick={() => handleBet('straight', num)} disabled={isDisabled} className="w-full h-14 text-white font-bold text-sm transition-colors flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50 hover:bg-white/10 cursor-pointer">
                         <div className={`w-10 h-10 rounded-sm flex items-center justify-center ${color === 'red' ? 'bg-red-600' : 'bg-zinc-900'}`}>
                           {num}
                         </div>
@@ -110,8 +110,8 @@ const BettingTable = ({ onBet, bets, isBettingPhase }: { onBet: (type: BetType, 
           <div className="grid grid-rows-3 gap-1">
             {[3, 2, 1].map(col => (
               <div key={col} className="relative">
-                <button onClick={() => handleBet(`column${col}` as BetType, col)} disabled={isDisabled} className="w-16 h-full bg-green-700 hover:bg-green-600 text-white font-bold text-sm rounded-r-md transition-colors flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50">
-                  2:1{renderBetChip(`column${col}`)}
+                <button onClick={() => handleBet(`column${col}` as BetType, col)} disabled={isDisabled} className="w-16 h-full bg-green-700 hover:bg-green-600 text-white font-bold text-sm rounded-r-md transition-colors flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
+                  2:1{renderBetChip(`column${col}-${col}`)}
                 </button>
               </div>
             ))}
@@ -119,17 +119,17 @@ const BettingTable = ({ onBet, bets, isBettingPhase }: { onBet: (type: BetType, 
         </div>
       </div>
       <div className="grid grid-cols-3 gap-1 mt-1">
-        <div className="relative"><button onClick={() => handleBet('dozen1', '1-12')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">1st 12{renderBetChip('dozen1')}</button></div>
-        <div className="relative"><button onClick={() => handleBet('dozen2', '13-24')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">2nd 12{renderBetChip('dozen2')}</button></div>
-        <div className="relative"><button onClick={() => handleBet('dozen3', '25-36')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">3rd 12{renderBetChip('dozen3')}</button></div>
+        <div className="relative"><button onClick={() => handleBet('dozen1', '1-12')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">1st 12{renderBetChip('dozen1-1-12')}</button></div>
+        <div className="relative"><button onClick={() => handleBet('dozen2', '13-24')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">2nd 12{renderBetChip('dozen2-13-24')}</button></div>
+        <div className="relative"><button onClick={() => handleBet('dozen3', '25-36')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">3rd 12{renderBetChip('dozen3-25-36')}</button></div>
       </div>
       <div className="grid grid-cols-6 gap-1 mt-1">
-        <div className="relative"><button onClick={() => handleBet('low', '1-18')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">1 to 18{renderBetChip('low')}</button></div>
-        <div className="relative"><button onClick={() => handleBet('even', 'even')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">EVEN{renderBetChip('even')}</button></div>
-        <div className="relative"><button onClick={() => handleBet('red', 'red')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"><RedDiamond />{renderBetChip('red')}</button></div>
-        <div className="relative"><button onClick={() => handleBet('black', 'black')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"><BlackDiamond />{renderBetChip('black')}</button></div>
-        <div className="relative"><button onClick={() => handleBet('odd', 'odd')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">ODD{renderBetChip('odd')}</button></div>
-        <div className="relative"><button onClick={() => handleBet('high', '19-36')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">19 to 36{renderBetChip('high')}</button></div>
+        <div className="relative"><button onClick={() => handleBet('low', '1-18')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">1 to 18{renderBetChip('low-1-18')}</button></div>
+        <div className="relative"><button onClick={() => handleBet('even', 'even')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">EVEN{renderBetChip('even-even')}</button></div>
+        <div className="relative"><button onClick={() => handleBet('red', 'red')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"><RedDiamond />{renderBetChip('red-red')}</button></div>
+        <div className="relative"><button onClick={() => handleBet('black', 'black')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"><BlackDiamond />{renderBetChip('black-black')}</button></div>
+        <div className="relative"><button onClick={() => handleBet('odd', 'odd')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">ODD{renderBetChip('odd-odd')}</button></div>
+        <div className="relative"><button onClick={() => handleBet('high', '19-36')} disabled={isDisabled} className="w-full h-12 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">19 to 36{renderBetChip('high-19-36')}</button></div>
       </div>
     </div>
   );
@@ -528,6 +528,7 @@ export default function RouletteGamePage() {
 
   
 
+  // disable clicks while spinning
 
   return (
     <>
