@@ -80,7 +80,7 @@ const BettingTable = ({ onBet, bets, isBettingPhase }: { onBet: (type: BetType, 
   ];
 
   return (
-    <div className="p-2 bg-green-800 rounded-lg shadow-lg w-full max-w-4xl border-4 border-green-900/50">
+    <div className="p-2 bg-green-800/50 rounded-lg shadow-lg w-full max-w-4xl border-4 border-green-900/50">
       <div className="grid grid-cols-[auto_1fr] gap-1">
         <div className="relative">
           <button onClick={() => handleBet('straight', 0)} disabled={isDisabled} className="w-16 h-full bg-green-700 hover:bg-green-600 text-white font-bold text-2xl rounded-l-md transition-colors flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50">
@@ -470,10 +470,42 @@ export default function RouletteGamePage() {
     }
   };
 
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+  // const spinAudioRef = React.useRef<HTMLAudioElement>(null);
+  // const winAudioRef = React.useRef<HTMLAudioElement>(null);
+  // const loseAudioRef = React.useRef<HTMLAudioElement>(null);
+
+  const [audioPlayState, setAudioPlayState] = useState(-1);
+
+  const toggleAudio = () => {
+    if (audioPlayState <= 0 && audioRef.current) {
+      audioRef.current.volume = 0.1;
+      audioRef.current.play().catch(error => console.error("Audio play error:", error));
+      setAudioPlayState(1);
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+      setAudioPlayState(0);
+    }
+  };
+
+
   return (
     <>
-      <div className="min-h-screen bg-green-800 text-white flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
-        <div className="absolute inset-0 bg-green-900/50 bg-[radial-gradient(#ffffff22_1px,transparent_1px)] [background-size:16px_16px]"></div>
+      <div className="min-h-screen bg-green-800 text-white flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden"
+        style={{ backgroundImage: 'url(/gugoxbearish.png)', backgroundSize: 'cover', backgroundPosition: 'center', objectFit: 'cover' }
+        }
+        onClick={() => {
+          if (audioRef.current && audioPlayState == -1) {
+            toggleAudio();
+          }
+        }
+        }
+      >
+        <audio ref={audioRef} src="/background_music.mp3" loop />
+        {/* <audio ref={spinAudioRef} src="/spin_sound.mp3" />
+        <audio ref={winAudioRef} src="/win_sound.mp3" />
+        <audio ref={loseAudioRef} src="/lose_sound.mp3" /> */}
+        <div className="absolute inset-0 bg-green-900/20 bg-[radial-gradient(#ffffff22_1px,transparent_1px)] [background-size:16px_16px]"></div>
         <Notification message={notification} onClear={() => setNotification('')} />
         <LastNumbers numbers={gameState?.last_numbers ?? []} />
 
@@ -534,7 +566,7 @@ export default function RouletteGamePage() {
           </div>
           <div className="flex-grow flex-col min-[768px]:flex-row flex items-start justify-center gap-4 pb-[150px] min-[768px]:pb-[80px] lg:pb-0">
             <BettingTable onBet={handleBet} bets={bets} isBettingPhase={isBettingPhase} />
-            <div className="flex flex-row min-[768px]:flex-col items-center gap-3 bg-black/30 p-3 rounded-lg sticky top-4 max-[768px]:w-full max-[768px]:justify-center">
+            <div className="flex flex-row  min-[768px]:flex-col items-center gap-3 bg-black/50 p-3 rounded-lg sticky top-4 max-[768px]:w-full max-[768px]:justify-center">
               <span className="text-gray-300 font-bold text-sm">CHIP</span>
               {CHIP_VALUES.map(value => (
                 <button key={value} onClick={() => setSelectedChip(value)} className={`w-8 h-8 lg:w-12 lg:h-12 rounded-full font-bold text-white text-sm border-4 transition-all duration-200 ${CHIP_COLORS[value]} ${selectedChip === value ? 'border-yellow-400 scale-110' : 'border-transparent hover:border-white/50'}`}>
