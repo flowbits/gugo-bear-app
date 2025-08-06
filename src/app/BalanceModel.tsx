@@ -11,17 +11,21 @@ interface BalanceModalProps {
     onClaim?: (amount: number) => void;
     status?: string;
     txHash?: string;
+    amount: number;
+    setAmount: (amount: number) => void;
+    action: string;
+    setAction: (action: string) => void;
 }
 
-export function BalanceModal({ open, onClose, onDeposit, onClaim, status, txHash }: BalanceModalProps) {
-    const [amount, setAmount] = useState(100);
+export function BalanceModal({ open, onClose, onDeposit, onClaim, status, txHash, amount, setAmount, action, setAction }: BalanceModalProps) {
+    // const [amount, setAmount] = useState(100);
     const { user } = useStore();
 
     function handleClose() {
-        setAmount(100);
+        // setAmount(100);
         onClose();
     }
-    const [action, setAction] = useState("Deposit");
+    
 
     return (
         <Modal show={open} size="md" onClose={handleClose} popup dismissible>
@@ -48,15 +52,18 @@ export function BalanceModal({ open, onClose, onDeposit, onClaim, status, txHash
                                 placeholder="1000"
                                 value={amount}
                                 min={0}
+                                readOnly={action === "Approve" && amount > 0}
                                 type="number"
                                 className="mt-1 bg-gray-800 text-white border-gray-600 placeholder-gray-500"
                                 onChange={(event) => {
+                                    if (action === "Approve" && amount>0) return; 
                                     const value = event.target.value;
                                     if (!isNaN(Number(value))) {
                                         setAmount(Number(value));
                                     } else {
                                         setAmount(0);
                                     }
+                                    setAction(""); 
                                 }}
                             />
                         </div>
@@ -70,7 +77,7 @@ export function BalanceModal({ open, onClose, onDeposit, onClaim, status, txHash
                                         setAction("Deposit");
                                         onDeposit(amount);
                                     }
-                                    setAmount(0);
+                                    // setAmount(0);
                                 }}
                             >
                                 Deposit
@@ -83,7 +90,7 @@ export function BalanceModal({ open, onClose, onDeposit, onClaim, status, txHash
                                         setAction("Claim");
                                         onClaim(amount);
                                     }
-                                    setAmount(0);
+                                    // setAmount(0);
                                 }}
                             >
                                 Claim

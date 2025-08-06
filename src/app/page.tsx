@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Dices, CircleDollarSign, RotateCcw, X } from 'lucide-react';
+import { Dices, CircleDollarSign, RotateCcw, X, Volume2, VolumeX } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 // Custom Hooks and Components
@@ -176,23 +176,100 @@ export default function RouletteGamePage() {
   const { gameState, isConnected, lastWinnings, sendPlaceBet } = useGameWebSocket(user.profile?.id ?? null);
 
   const isBettingPhase = gameState?.phase === 'BETTING';
-  const mustSpin = gameState?.phase === 'SPINNING';
+  // const mustSpin = gameState?.phase === 'SPINNING';
+  const [mustSpin, setMustSpin] = useState(false);
   const prizeNumber = WHEEL_NUMBERS.indexOf(gameState?.winning_number ?? -1);
   const [isBalanceModalOpen, setIsBalanceModalOpen] = useState(false);
+  const [amount, setAmount] = useState<number>(100);
+  const [action, setAction] = useState("");
 
   // const { address, chainId } = useAccount();
   const { isConnected: isWalletConnected, address, chainId, } = useAccount();
 
   const { data: hash, writeContract, isError, isSuccess, status } = useWriteContract()
   const { switchChain } = useSwitchChain();
-  // const [isMounted, setIsMounted] = useState(false);
+  
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+  const spinAudioRef = React.useRef<HTMLAudioElement>(null);
+  const winAudioRef = React.useRef<HTMLAudioElement>(null);
+  const loseAudioRef = React.useRef<HTMLAudioElement>(null);
 
-  // Effect to handle wallet connection and chain switching
-  // useEffect(() => {
-  //   setTimeout(() => {
-  //     setIsMounted(true);
-  //   }, 1000);
-  // }, []);
+
+  const [audioPlayState, setAudioPlayState] = useState(-1);
+
+  const toggleAudio = () => {
+    if (audioPlayState <= 0 && audioRef.current) {
+      audioRef.current.volume = 0.1;
+      audioRef.current.play().catch(error => console.error("Audio play error:", error));
+      setAudioPlayState(1);
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+      setAudioPlayState(0);
+    }
+  };
+
+  useEffect(() => {
+    if (gameState?.phase !== 'RESULTS' || mustSpin) return;
+    if (lastWinnings !== null) {
+      if (lastWinnings > 0) {
+        setNotification(`You won ${lastWinnings.toLocaleString()} $tGUGO!`);
+        if (winAudioRef.current && audioPlayState > 0) {
+          try {
+            winAudioRef.current.volume = 0.1;
+            winAudioRef.current.play().catch(error => console.error("Win audio play error:", error));
+          } catch (e) {
+          }
+        }
+      } else {
+        setNotification(`No win this round. Better luck next time!`);
+        if (loseAudioRef.current && audioPlayState > 0) {
+          try {
+            loseAudioRef.current.volume = 0.1;
+            loseAudioRef.current.play().catch(error => console.error("Lose audio play error:", error));
+          } catch (e) {
+          }
+        }
+      }
+    }
+  }, [lastWinnings, gameState, mustSpin, winAudioRef.current, loseAudioRef.current, audioPlayState]);
+
+  useEffect(() => {
+    // handle mustSpin state based on game phase
+    if (gameState?.phase === 'SPINNING' && !mustSpin) {
+      setMustSpin(true);
+      if (spinAudioRef.current && audioPlayState > 0) {
+        try {
+          spinAudioRef.current.volume = 0.1;
+          spinAudioRef.current.play().catch(error => console.error("Spin audio play error:", error));
+        } catch (error) {
+        }}
+    } else if (gameState?.phase !== 'SPINNING' && mustSpin) {
+      setMustSpin(false);
+      if (spinAudioRef.current) {
+        try {
+          spinAudioRef.current.pause();
+          spinAudioRef.current.currentTime = 0; 
+        } catch (error) {
+        }
+      }
+    }
+    }, [gameState?.phase, mustSpin, spinAudioRef.current, audioPlayState]); 
+
+
+    // useEffect(() => {
+    // if (mustSpin && spinAudioRef.current) {
+    //   if (audioPlayState > 0) {
+    //     spinAudioRef.current.volume = 0.1;
+    //   } else if (audioPlayState === 0) {
+    //     spinAudioRef.current.volume = 0;
+    //   }
+    //   spinAudioRef.current.play().catch(error => console.error("Spin audio play error:", error));
+    // } else if (spinAudioRef.current && !mustSpin) {
+    //   spinAudioRef.current.pause();
+    //   spinAudioRef.current.currentTime = 0; 
+    // }
+
+    // }, [mustSpin, spinAudioRef, audioPlayState]);
 
   useEffect(() => {
     if (!isWalletConnected) {
@@ -209,11 +286,24 @@ export default function RouletteGamePage() {
 
 
   useEffect(() => {
-    if (status == "success") {
-      setNotification("Transaction successful! Check your wallet for details.");
-      fetchUserProfile();
+    const CheckFn = async () => {
+      if (status == "success" && isSuccess) {
+        if (action === "Approve") {
+          setTimeout(async () => {
+            await handleDeposit(amount);
+          }, 1000);
+        }
+        if (action === "Deposit" || action === "Claim") {
+          setTimeout(async () => {
+            await fetchUserProfile();
+            // setIsBalanceModalOpen(false);
+          }, 5000);
+        }
+        setNotification("Transaction successful! Check your wallet for details.");
+      }
     }
-  }, [status, fetchUserProfile]);
+    CheckFn();
+  }, [status, fetchUserProfile, action, amount, isSuccess]);
 
 
 
@@ -263,33 +353,6 @@ export default function RouletteGamePage() {
       return;
     }
 
-    console.log('balance', tokenBalanceData ? Number(tokenBalanceData.value) / 1e18 : tokenBalanceData, 'amount', amount);
-
-
-    // await token_contract.allowance(address, MANAGER_CONTRACT_ADDRESS).then(async (allowance: any) => {
-    //   if (allowance < ethers.parseEther(amount.toString())) {
-    //     await token_contract.approve(MANAGER_CONTRACT_ADDRESS, ethers.parseEther(amount.toString())).then(async () => {
-    //       await manager_contract.deposit(ethers.parseEther(amount.toString())).then(() => {
-    //         setNotification(`Deposited ${amount} $tGUGO successfully, will be reflected in your balance soon.`);
-    //         // fetchUserProfile();
-    //       }).catch((error: any) => {
-    //         console.error("Deposit failed:", error);
-    //         setNotification("Deposit failed. Please try again.");
-    //       });
-    //     }).catch((error: any) => {
-    //       console.error("Approval failed:", error);
-    //       setNotification("Approval failed. Please try again.");
-    //     });
-    //   } else {
-    //     await manager_contract.deposit(ethers.parseEther(amount.toString())).then(() => {
-    //       setNotification(`Deposited ${amount} $tGUGO successfully, will be reflected in your balance soon.`);
-    //       // fetchUserProfile();
-    //     }).catch((error: any) => {
-    //       console.error("Deposit failed:", error);
-    //       setNotification("Deposit failed. Please try again.");
-    //     });
-    //   }
-    // })
 
     try {
       const res = await checkTokenAllowance(
@@ -299,8 +362,9 @@ export default function RouletteGamePage() {
         }
       )
       const userAllowance = res?.allowance ? res?.allowance / 1e18 : 0;
-      console.log("User allowance:", userAllowance, "Amount to deposit:", amount);
+      // console.log("User allowance:", userAllowance, "Amount to deposit:", amount);
       if (userAllowance < amount) {
+        setAction("Approve")
         await writeContract(
           {
             abi: TOKEN_ABI,
@@ -312,6 +376,7 @@ export default function RouletteGamePage() {
         setNotification(`Approve token and then try to deposit $tGUGO again.`);
       }
       else {
+        setAction("Deposit")
         await writeContract(
           {
             abi: MANAGER_ABI,
@@ -343,6 +408,7 @@ export default function RouletteGamePage() {
       setNotification("Insufficient balance for this claim.");
       return;
     }
+    setAction("Claim")
     const res = await claimTokens(amount);
     // setIsBalanceModalOpen(false);
     console.log("Claim response:", res);
@@ -388,16 +454,6 @@ export default function RouletteGamePage() {
   }, [setToken, fetchUserProfile]);
 
   // Effect for handling win/loss notifications
-  useEffect(() => {
-    if (gameState?.phase !== 'RESULTS' || mustSpin) return;
-    if (lastWinnings !== null) {
-      if (lastWinnings > 0) {
-        setNotification(`You won ${lastWinnings.toLocaleString()} $tGUGO!`);
-      } else {
-        setNotification(`No win this round. Better luck next time!`);
-      }
-    }
-  }, [lastWinnings, gameState, mustSpin]);
 
   // Clear bets when a new betting round starts
   useEffect(() => {
@@ -470,23 +526,7 @@ export default function RouletteGamePage() {
     }
   };
 
-  const audioRef = React.useRef<HTMLAudioElement>(null);
-  // const spinAudioRef = React.useRef<HTMLAudioElement>(null);
-  // const winAudioRef = React.useRef<HTMLAudioElement>(null);
-  // const loseAudioRef = React.useRef<HTMLAudioElement>(null);
-
-  const [audioPlayState, setAudioPlayState] = useState(-1);
-
-  const toggleAudio = () => {
-    if (audioPlayState <= 0 && audioRef.current) {
-      audioRef.current.volume = 0.1;
-      audioRef.current.play().catch(error => console.error("Audio play error:", error));
-      setAudioPlayState(1);
-    } else if (audioRef.current) {
-      audioRef.current.pause();
-      setAudioPlayState(0);
-    }
-  };
+  
 
 
   return (
@@ -495,16 +535,16 @@ export default function RouletteGamePage() {
         style={{ backgroundImage: 'url(/gugoxbearish.png)', backgroundSize: 'cover', backgroundPosition: 'center', objectFit: 'cover' }
         }
         onClick={() => {
-          if (audioRef.current && audioPlayState == -1) {
+          if (audioRef.current && audioPlayState == -1 && !mustSpin) {
             toggleAudio();
           }
         }
         }
       >
         <audio ref={audioRef} src="/background_music.mp3" loop />
-        {/* <audio ref={spinAudioRef} src="/spin_sound.mp3" />
+        <audio ref={spinAudioRef} src="/spin_sound.mp3" />
         <audio ref={winAudioRef} src="/win_sound.mp3" />
-        <audio ref={loseAudioRef} src="/lose_sound.mp3" /> */}
+        <audio ref={loseAudioRef} src="/lose_sound.mp3" />
         <div className="absolute inset-0 bg-green-900/20 bg-[radial-gradient(#ffffff22_1px,transparent_1px)] [background-size:16px_16px]"></div>
         <Notification message={notification} onClear={() => setNotification('')} />
         <LastNumbers numbers={gameState?.last_numbers ?? []} />
@@ -580,6 +620,11 @@ export default function RouletteGamePage() {
         <div className="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md p-4 z-30 ">
           <div className="w-full max-w-7xl mx-auto flex flex-col min-[768px]:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-6 text-xs lg:text-lg">
+              <button onClick={toggleAudio} className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg shadow-gray-600/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={mustSpin}
+              >
+                {audioPlayState > 0 ? <Volume2 size={20} className="text-yellow-400" /> : <VolumeX size={20} className="text-red-400" />}
+              </button>
               <div className="flex flex-row items-center gap-2 bg-black/30 p-2 rounded-lg ">
                 <span className="text-gray-400">Bet:</span>
                 <span className="font-bold text-yellow-400 w-full flex flex-row gap-1">
@@ -596,17 +641,17 @@ export default function RouletteGamePage() {
               </div>
               {
                 user?.profile?.nonce == null || user?.profile?.nonce === 0 ? (
-                  <button onClick={() => handleClaim(1)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-xs lg:text-lg shadow-lg shadow-blue-600/30">
+                  <button onClick={() => handleClaim(1)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-xs lg:text-lg shadow-lg shadow-blue-600/30 cursor-pointer ">
                     Claim Bonus
                   </button>
                 ) : null
               }
             </div>
             <div className="flex items-center gap-4">
-              <button onClick={clearBets} disabled={!isBettingPhase || totalBet === 0} className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-bold py-3 px-3 lg:px-6 rounded-lg flex items-center gap-2 transition-colors text-xs lg:text-lg shadow-lg shadow-gray-600/30">
+              <button onClick={clearBets} disabled={!isBettingPhase || totalBet === 0} className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-bold py-3 px-3 lg:px-6 rounded-lg flex items-center gap-2 transition-colors text-xs lg:text-lg shadow-lg shadow-gray-600/30 cursor-pointer disabled:cursor-not-allowed">
                 <RotateCcw size={20} /> Clear
               </button>
-              <button onClick={handlePlaceBets} disabled={!isBettingPhase || totalBet === 0} className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed text-white font-bold lg:py-3 p-2 lg:px-6 rounded-lg flex items-center gap-2 transition-colors text-xs lg:text-lg shadow-lg shadow-green-600/30">
+              <button onClick={handlePlaceBets} disabled={!isBettingPhase || totalBet === 0} className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed text-white font-bold lg:py-3 p-2 lg:px-6 rounded-lg flex items-center gap-2 transition-colors text-xs lg:text-lg shadow-lg shadow-green-600/30 cursor-pointer disabled:cursor-not-allowed">
                 <Dices size={20} /> PLACE BET
               </button>
               <WalletConnect
@@ -618,7 +663,7 @@ export default function RouletteGamePage() {
           </div>
         </div>
       </div>
-      <BalanceModal open={isBalanceModalOpen} onClose={OnCloseBalanceModal} onDeposit={handleDeposit} onClaim={handleClaim} status={status} txHash={hash} />
+      <BalanceModal open={isBalanceModalOpen} onClose={OnCloseBalanceModal} onDeposit={handleDeposit} onClaim={handleClaim} status={status} txHash={hash} amount={amount} setAmount={setAmount} action={action} setAction={setAction} />
     </>
   );
 }
