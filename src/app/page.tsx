@@ -185,14 +185,23 @@ export default function RouletteGamePage() {
 
   const { data: hash, writeContract, isError, isSuccess, status } = useWriteContract()
   const { switchChain } = useSwitchChain();
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Effect to handle wallet connection and chain switching
+  useEffect(() => {
+    setTimeout(() => {
+      setIsMounted(true);
+    }, 1000);
+  }, []);
 
   useEffect(() => {
-    if (!isWalletConnected) {
+    if (!isWalletConnected && isMounted) {
       setNotification("Connect your wallet to play.");
+      logout();
     } else if (isWalletConnected && notification === "Connect your wallet to play.") {
       setNotification("");
     }
-  }, [isWalletConnected, user?.profile, notification]);
+  }, [isWalletConnected, user?.profile, notification, isMounted]);
 
 
   useEffect(() => {
