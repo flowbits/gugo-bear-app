@@ -632,30 +632,36 @@ export default function RouletteGamePage() {
           </div>
         </div>
         {isChatOpen && (
-          <div className="fixed bottom-36 right-6 w-80 max-w-[90vw] h-14 bg-black/50  rounded-lg shadow-2xl z-90 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-2">
-              <div className="relative w-full ">
-
-                <input
-                  type="text"
-                  className="w-full bg-zinc-800 text-white rounded-lg px-3 py-1 outline-none border border-yellow-400 placeholder-gray-400"
-                  placeholder="Chat..."
-                  value={inputChat}
-                  onChange={(e) => setInputChat(e.target.value)}
-                />
-                <button
-                  className="absolute top-1/2 right-4 -translate-y-1/2 text-yellow-400 flex items-center justify-center"
-                  aria-label="Send"
-                >
-                  <IoMdSend size={20} />
-                </button>
+          <>
+            <div
+              className="fixed inset-0 z-80"
+              style={{ background: "transparent" }}
+              onClick={() => setIsChatOpen(false)}
+            />
+            <div className="fixed bottom-36 right-6 w-80 max-w-[90vw] bg-black/50 rounded-lg shadow-2xl z-90 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-2">
+                <div className="relative w-full ">
+                  <input
+                    type="text"
+                    className="w-full bg-zinc-800 text-white rounded-lg px-3 py-1 outline-none border border-yellow-400 placeholder-gray-400"
+                    placeholder="Chat..."
+                    value={inputChat}
+                    onChange={(e) => setInputChat(e.target.value)}
+                  />
+                  <button
+                    className="absolute top-1/2 right-4 -translate-y-1/2 text-yellow-400 flex items-center justify-center"
+                    aria-label="Send"
+                  >
+                    <IoMdSend size={20} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </>
         )}
 
         <div className="fixed bottom-36 right-2 w-80 max-w-[90vw]  rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden">
-          <div className="flex-1 p-4">
+          <div className="p-1">
             <Chat limit={3} alignRight />
           </div>
         </div>
@@ -665,7 +671,7 @@ export default function RouletteGamePage() {
           onClick={() => setIsChatOpen((prev) => !prev)}
         >
           <IoChatboxEllipses size={24} className="" />
-       
+
         </button>
 
         <div className="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md p-4 z-30 ">
