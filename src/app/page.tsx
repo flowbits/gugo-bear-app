@@ -188,7 +188,6 @@ export default function RouletteGamePage() {
 
   const { data: hash, writeContract, isError, isSuccess, status } = useWriteContract()
   const { switchChain } = useSwitchChain();
-  
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const spinAudioRef = React.useRef<HTMLAudioElement>(null);
   const winAudioRef = React.useRef<HTMLAudioElement>(null);
@@ -242,34 +241,35 @@ export default function RouletteGamePage() {
           spinAudioRef.current.volume = 0.1;
           spinAudioRef.current.play().catch(error => console.error("Spin audio play error:", error));
         } catch (error) {
-        }}
+        }
+      }
     } else if (gameState?.phase !== 'SPINNING' && mustSpin) {
       setMustSpin(false);
       if (spinAudioRef.current) {
         try {
           spinAudioRef.current.pause();
-          spinAudioRef.current.currentTime = 0; 
+          spinAudioRef.current.currentTime = 0;
         } catch (error) {
         }
       }
     }
-    }, [gameState?.phase, mustSpin, spinAudioRef.current, audioPlayState]); 
+  }, [gameState?.phase, mustSpin, spinAudioRef.current, audioPlayState]);
 
 
-    // useEffect(() => {
-    // if (mustSpin && spinAudioRef.current) {
-    //   if (audioPlayState > 0) {
-    //     spinAudioRef.current.volume = 0.1;
-    //   } else if (audioPlayState === 0) {
-    //     spinAudioRef.current.volume = 0;
-    //   }
-    //   spinAudioRef.current.play().catch(error => console.error("Spin audio play error:", error));
-    // } else if (spinAudioRef.current && !mustSpin) {
-    //   spinAudioRef.current.pause();
-    //   spinAudioRef.current.currentTime = 0; 
-    // }
+  // useEffect(() => {
+  // if (mustSpin && spinAudioRef.current) {
+  //   if (audioPlayState > 0) {
+  //     spinAudioRef.current.volume = 0.1;
+  //   } else if (audioPlayState === 0) {
+  //     spinAudioRef.current.volume = 0;
+  //   }
+  //   spinAudioRef.current.play().catch(error => console.error("Spin audio play error:", error));
+  // } else if (spinAudioRef.current && !mustSpin) {
+  //   spinAudioRef.current.pause();
+  //   spinAudioRef.current.currentTime = 0; 
+  // }
 
-    // }, [mustSpin, spinAudioRef, audioPlayState]);
+  // }, [mustSpin, spinAudioRef, audioPlayState]);
 
   useEffect(() => {
     if (!isWalletConnected) {
@@ -526,15 +526,14 @@ export default function RouletteGamePage() {
     }
   };
 
-  
 
   // disable clicks while spinning
 
   return (
     <>
       <div className="min-h-screen bg-green-800 text-white flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden"
-        style={{ backgroundImage: 'url(/gugoxbearish.png)', backgroundSize: 'cover', backgroundPosition: 'center', objectFit: 'cover' }
-        }
+        // style={{ backgroundImage: 'url(/gugoxbearish.png)', backgroundSize: 'cover', backgroundPosition: 'center', objectFit: 'cover' }
+        // }
         onClick={() => {
           if (audioRef.current && audioPlayState == -1 && !mustSpin) {
             toggleAudio();
@@ -542,6 +541,17 @@ export default function RouletteGamePage() {
         }
         }
       >
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0"
+        >
+          <source src="/gugoxbearish.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-green-900/20 bg-[radial-gradient(#ffffff22_1px,transparent_1px)] [background-size:16px_16px]"></div>
+
         <audio ref={audioRef} src="/background_music.mp3" loop />
         <audio ref={spinAudioRef} src="/spin_sound.mp3" />
         <audio ref={winAudioRef} src="/win_sound.mp3" />
@@ -622,7 +632,7 @@ export default function RouletteGamePage() {
           <div className="w-full max-w-7xl mx-auto flex flex-col min-[768px]:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-6 text-xs lg:text-lg">
               <button onClick={toggleAudio} className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg shadow-gray-600/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={mustSpin}
+                disabled={mustSpin}
               >
                 {audioPlayState > 0 ? <Volume2 size={20} className="text-yellow-400" /> : <VolumeX size={20} className="text-red-400" />}
               </button>
