@@ -548,7 +548,7 @@ export default function RouletteGamePage() {
           playsInline
           className="absolute inset-0 w-full h-full object-cover z-0"
         >
-          <source src="/gugoxbearish.mp4" type="video/mp4" />
+          <source src="/gugo_3.mov" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-green-900/20 bg-[radial-gradient(#ffffff22_1px,transparent_1px)] [background-size:16px_16px]"></div>
 
