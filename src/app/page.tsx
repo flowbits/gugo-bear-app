@@ -2,9 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Dices, CircleDollarSign, RotateCcw, X, Volume2, VolumeX } from 'lucide-react';
-import dynamic from 'next/dynamic';
 
-// Custom Hooks and Components
+
 import { useStore } from '@/lib/redux/hooks';
 import { useGameWebSocket } from '@/lib/websockets/useGameWebSocket';
 import { WalletConnect } from './walletConnect';
@@ -26,14 +25,11 @@ import { abstractTestnet } from 'viem/chains';
 import Chat from './chat';
 import { IoMdSend } from 'react-icons/io';
 import { IoChatboxEllipses } from "react-icons/io5";
+import { RouletteWheel } from './RouletteWheel';
 
 
 
-const Wheel = dynamic(() => import('react-custom-roulette').then(mod => mod.Wheel), {
-  ssr: false,
-});
 
-// --- TYPES AND CONSTANTS (Unchanged) ---
 type BetType = 'straight' | 'red' | 'black' | 'odd' | 'even' | 'low' | 'high' | 'dozen1' | 'dozen2' | 'dozen3' | 'column1' | 'column2' | 'column3';
 
 interface NumberInfo {
@@ -56,7 +52,7 @@ const CHIP_COLORS: { [key: number]: string } = {
 
 const getNumberInfo = (num: number): NumberInfo => NUMBER_DETAILS[num];
 
-// --- CHILD COMPONENTS (Unchanged) ---
+
 const RedDiamond = () => <svg width="24" height="24" viewBox="0 0 24 24" className="w-5 h-5"><path fill="#ef4444" d="M12 2L2 12l10 10 10-10L12 2z"></path></svg>;
 const BlackDiamond = () => <svg width="24" height="24" viewBox="0 0 24 24" className="w-5 h-5"><path fill="#18181b" d="M12 2L2 12l10 10 10-10L12 2z"></path></svg>;
 
@@ -174,13 +170,15 @@ export default function RouletteGamePage() {
   const { user, setToken, fetchUserProfile, logout } = useStore();
   const balance = user.profile?.balance ?? 0;
 
+
   // WebSocket integration
-  const { gameState, isConnected, lastWinnings, sendPlaceBet } = useGameWebSocket(user.profile?.id ?? null);
+  const { gameState, isConnected, lastWinnings, sendPlaceBet, sendChatMessage, chatMessages } = useGameWebSocket(user.profile?.id ?? null);
 
   const isBettingPhase = gameState?.phase === 'BETTING';
   // const mustSpin = gameState?.phase === 'SPINNING';
   const [mustSpin, setMustSpin] = useState(false);
-  const prizeNumber = WHEEL_NUMBERS.indexOf(gameState?.winning_number ?? -1);
+  const [prizeNumber, setPrizeNumber] = useState<number>(-1);
+  // const prizeNumber = WHEEL_NUMBERS.indexOf(gameState?.winning_number ?? -1);
   const [isBalanceModalOpen, setIsBalanceModalOpen] = useState(false);
   const [amount, setAmount] = useState<number>(100);
   const [action, setAction] = useState("");
@@ -199,6 +197,7 @@ export default function RouletteGamePage() {
   const [audioPlayState, setAudioPlayState] = useState(-1);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [inputChat, setInputChat] = useState("");
+  const [notifClose, setNotifClose] = useState(false);
 
   const toggleAudio = () => {
     if (audioPlayState <= 0 && audioRef.current) {
@@ -236,55 +235,48 @@ export default function RouletteGamePage() {
     }
   }, [lastWinnings, gameState, mustSpin, winAudioRef.current, loseAudioRef.current, audioPlayState]);
 
-  useEffect(() => {
-    // handle mustSpin state based on game phase
-    if (gameState?.phase === 'SPINNING' && !mustSpin) {
-      setMustSpin(true);
-      if (spinAudioRef.current && audioPlayState > 0) {
-        try {
-          spinAudioRef.current.volume = 0.1;
-          spinAudioRef.current.play().catch(error => console.error("Spin audio play error:", error));
-        } catch (error) {
-        }
-      }
-    } else if (gameState?.phase !== 'SPINNING' && mustSpin) {
-      setMustSpin(false);
-      if (spinAudioRef.current) {
-        try {
-          spinAudioRef.current.pause();
-          spinAudioRef.current.currentTime = 0;
-        } catch (error) {
-        }
-      }
-    }
-  }, [gameState?.phase, mustSpin, spinAudioRef.current, audioPlayState]);
 
+  useEffect(() => {
+    if (gameState?.phase === 'SPINNING') {
+      const winningIndex = WHEEL_NUMBERS.indexOf(gameState?.winning_number ?? 0);
+      setPrizeNumber(winningIndex === -1 ? 0 : winningIndex);
+      setMustSpin(true);
+    }
+  }, [gameState?.phase, gameState?.winning_number, gameState?.spin_id]);
 
   // useEffect(() => {
-  // if (mustSpin && spinAudioRef.current) {
-  //   if (audioPlayState > 0) {
-  //     spinAudioRef.current.volume = 0.1;
-  //   } else if (audioPlayState === 0) {
-  //     spinAudioRef.current.volume = 0;
+  //   if (gameState?.phase === 'SPINNING') {
+  //     setMustSpin(true);
+  //   } else {
+  //     setMustSpin(false);
   //   }
-  //   spinAudioRef.current.play().catch(error => console.error("Spin audio play error:", error));
-  // } else if (spinAudioRef.current && !mustSpin) {
-  //   spinAudioRef.current.pause();
-  //   spinAudioRef.current.currentTime = 0; 
-  // }
-
-  // }, [mustSpin, spinAudioRef, audioPlayState]);
+  // }, [gameState?.phase]);
 
   useEffect(() => {
-    if (!isWalletConnected) {
+    if (mustSpin && spinAudioRef.current) {
+      if (audioPlayState > 0) {
+        spinAudioRef.current.volume = 0.1;
+        spinAudioRef.current.play().catch(error => console.error("Spin audio play error:", error));
+      }
+    } else if (!mustSpin && spinAudioRef.current) {
+      spinAudioRef.current.pause();
+      spinAudioRef.current.currentTime = 0;
+    }
+  }, [mustSpin, audioPlayState]);
+
+
+
+  useEffect(() => {
+    if (!isWalletConnected && !notifClose) {
       setNotification("Connect your wallet to play.");
     }
-    else if (isWalletConnected && address && user?.profile && address.toLowerCase() !== user.profile.wallet_address.toLowerCase()) {
+    else if (isWalletConnected && address && user?.profile && address.toLowerCase() !== user.profile.wallet_address.toLowerCase() && !notifClose) {
       logout();
       setNotification("Connect your wallet to play.");
     }
-    else if (isWalletConnected && notification === "Connect your wallet to play.") {
+    else if (isWalletConnected && (notification === "Connect your wallet to play." || notifClose)) {
       setNotification("");
+      setNotifClose(false);
     }
   }, [isWalletConnected, user?.profile, notification]);
 
@@ -531,7 +523,10 @@ export default function RouletteGamePage() {
   };
 
 
-  // disable clicks while spinning
+
+  const handleSendMessage = (message: string) => {
+    sendChatMessage(message)
+  };
 
   return (
     <>
@@ -561,35 +556,16 @@ export default function RouletteGamePage() {
         <audio ref={winAudioRef} src="/win_sound.mp3" />
         <audio ref={loseAudioRef} src="/lose_sound.mp3" />
         <div className="absolute inset-0 bg-green-900/20 bg-[radial-gradient(#ffffff22_1px,transparent_1px)] [background-size:16px_16px]"></div>
-        <Notification message={notification} onClear={() => setNotification('')} />
+        <Notification message={notification} onClear={() => { setNotification(''); setNotifClose(true) }} />
         <LastNumbers numbers={gameState?.last_numbers ?? []} />
 
         <div className="w-full flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4 z-10">
           <div className="flex-shrink-0 flex flex-col items-center gap-6 pt-8">
-            <Wheel
-              mustStartSpinning={mustSpin}
-              prizeNumber={prizeNumber === -1 ? 0 : prizeNumber}
-              innerRadius={5}
-              innerBorderColor='#ffffff'
-              disableInitialAnimation={true}
-              innerBorderWidth={2}
-              outerBorderColor='#ffffff'
-              outerBorderWidth={4}
-              data={
-                WHEEL_NUMBERS.map(num => {
-                  const { color } = getNumberInfo(num);
-                  return {
-                    option: `${num}`,
-                    style: {
-                      backgroundColor: color === 'red' ? '#df3423' : color === 'black' ? '#3e3e3e' : '#00a000',
-                      textColor: '#ffffff',
-                    }
-                  };
-                })
-              }
-              onStopSpinning={() => {
-                console.log("Wheel stopped spinning.");
-              }}
+            <RouletteWheel
+              mustSpin={mustSpin}
+              prizeNumber={prizeNumber}
+              spin_id={gameState?.spin_id}
+              setMustSpin={setMustSpin}
             />
             <div className="bg-black/50 p-4 rounded-lg text-center shadow-lg min-h-[60px] w-full max-w-sm">
               {gameState?.phase === 'BETTING' && <p className="text-xl text-yellow-400">Place your bets! Timer: {gameState.timer}</p>}
@@ -631,48 +607,51 @@ export default function RouletteGamePage() {
             </div>
           </div>
         </div>
-        {isChatOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-80"
-              style={{ background: "transparent" }}
-              onClick={() => setIsChatOpen(false)}
-            />
-            <div className="fixed bottom-36 right-6 w-80 max-w-[90vw] bg-black/50 rounded-lg shadow-2xl z-90 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-2">
-                <div className="relative w-full ">
-                  <input
-                    type="text"
-                    className="w-full bg-zinc-800 text-white rounded-lg px-3 py-1 outline-none border border-yellow-400 placeholder-gray-400"
-                    placeholder="Chat..."
-                    value={inputChat}
-                    onChange={(e) => setInputChat(e.target.value)}
-                  />
-                  <button
-                    className="absolute top-1/2 right-4 -translate-y-1/2 text-yellow-400 flex items-center justify-center"
-                    aria-label="Send"
-                  >
-                    <IoMdSend size={20} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
 
-        <div className="fixed bottom-36 right-2 w-80 max-w-[90vw]  rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden">
+
+        <div className={`fixed  bottom-36 right-2 w-80 max-w-[90vw]  rounded-lg shadow-2xl ${isChatOpen ? 'z-50 ' : 'z-0'} flex flex-col overflow-hidden`}>
           <div className="p-1">
-            <Chat limit={3} alignRight />
+            <Chat messages={chatMessages} alignRight={false} limit={3} isChatOpen={isChatOpen} user_wallet_address={user?.profile?.wallet_address} />
           </div>
         </div>
 
-        <button
-          className="fixed bottom-24 right-6 font-bold rounded-lg py-1 px-2 bg-yellow-400 cursor-pointer text-black z-40 shadow-lg"
-          onClick={() => setIsChatOpen((prev) => !prev)}
-        >
-          <IoChatboxEllipses size={24} className="" />
 
-        </button>
+
+        <div className={`fixed bottom-21 right-3 w-80 max-w-[90vw]  z-90 flex flex-col overflow-hidden ${isChatOpen ? 'bg-black/20 rounded-lg shadow-2xl' : ' '}`}>
+          <div className="flex-1 overflow-y-auto p-2">
+            <form className="relative w-full flex flex-row gap-2"
+              onSubmit={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+
+                if (isChatOpen && inputChat?.length > 0) {
+                  handleSendMessage(inputChat);
+                  setInputChat("");
+                } else {
+                  setIsChatOpen((prev) => !prev)
+                }
+              }
+              }
+            >
+              {isChatOpen && <input
+                type="text"
+                className="w-full bg-zinc-800 text-white rounded-lg px-3 py-1 outline-none border border-yellow-400 placeholder-gray-400"
+                placeholder="Chat..."
+                value={inputChat}
+                onChange={(e) => {
+                  setInputChat(e.target.value)
+                }}
+              />}
+              <button
+                className="fixed bottom-24 right-6 font-bold rounded-lg py-1 px-2 bg-yellow-400 cursor-pointer text-black z-40 shadow-lg"
+                type='submit'
+              >
+                {isChatOpen && inputChat?.length > 0 ? <IoMdSend size={24} className="" /> : <IoChatboxEllipses size={24} className="" />}
+
+              </button>
+            </form>
+          </div>
+        </div>
 
         <div className="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md p-4 z-30 ">
           <div className="w-full max-w-7xl mx-auto flex flex-col min-[768px]:flex-row items-center justify-between gap-4">

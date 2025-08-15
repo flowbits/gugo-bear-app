@@ -2,20 +2,28 @@ import { ConnectKitButton, } from "connectkit";
 import { useAbstractClient } from "@abstract-foundation/agw-react";
 import { useEffect, useState } from "react";
 import { useStore } from "@/lib/redux/hooks";
-import { useSignMessage, useAccount } from "wagmi";
+import { useSignMessage, useAccount, useDisconnect } from "wagmi";
 
 
 export const WalletConnect = ({ notify }:
     { notify?: (message: string, type?: 'success' | 'error') => void }
 ) => {
 
-    const { setToken, fetchUserProfile, user } = useStore();
+    const { setToken, fetchUserProfile, user, logout } = useStore();
     const { data: signMessageData, error, signMessage: signWithWagmi, variables } = useSignMessage()
-    const { address } = useAccount();
+    const { address, isDisconnected } = useAccount();
 
-    // Using the Abstract client to sign messages
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (isDisconnected && user?.profile?.wallet_address) {
+                logout();
+            }
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [isDisconnected, logout, user?.profile?.wallet_address]);
+
     const { data: agwClient } = useAbstractClient();
-    // const [signature, setSignature] = useState<string | null>(null);
 
     async function signMessage() {
         try {
