@@ -49,7 +49,11 @@ export const useGameWebSocket = (userId: number | null): UseGameSocketReturn => 
                 break;
             
             case 'recent_chat_messages':
-                setChatMessages(message.payload);
+                if (!Array.isArray(message.payload)) {
+                    // console.error('Expected an array of chat messages');
+                    return;
+                }
+                setChatMessages(message?.payload?.reverse());
                 break;
 
             case 'spin_start':

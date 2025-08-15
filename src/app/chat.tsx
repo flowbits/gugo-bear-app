@@ -38,7 +38,7 @@ export default function Chat({
           flex flex-col gap-2
           ${alignRight ? "items-end" : ""}
           ${isChatOpen
-            ? "h-[400px] overflow-y-auto md:p-1 rounded-lg bg-black/40 custom-scrollbar"
+            ? "h-[400px] overflow-y-auto md:p-1 rounded-lg bg-black/60 min-[1024]:bg-black/40 custom-scrollbar"
             : ""
           }
         `}

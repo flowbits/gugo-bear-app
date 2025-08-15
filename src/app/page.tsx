@@ -609,7 +609,7 @@ export default function RouletteGamePage() {
         </div>
 
 
-        <div className={`fixed  bottom-36 right-2 w-80 max-w-[90vw]  rounded-lg shadow-2xl ${isChatOpen ? 'z-50 ' : 'z-0'} flex flex-col overflow-hidden`}>
+        <div className={`fixed bottom-36 right-2 w-80 max-w-[90vw]  rounded-lg shadow-2xl ${isChatOpen ? 'z-50 ' : 'z-0 hidden min-[1024]:block'} flex flex-col overflow-hidden`}>
           <div className="p-1">
             <Chat messages={chatMessages} alignRight={false} limit={3} isChatOpen={isChatOpen} user_wallet_address={user?.profile?.wallet_address} />
           </div>
